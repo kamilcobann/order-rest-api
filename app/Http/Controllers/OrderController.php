@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Product;
+use Brick\Math\BigInteger;
+use DateTime;
+use GuzzleHttp\Handler\Proxy;
+use Symfony\Component\VarDumper\VarDumper;
 
 class OrderController extends Controller
 {
@@ -31,11 +35,12 @@ class OrderController extends Controller
 
         $credits = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', $token)[1]))));
 
-        $user = (int)($credits->sub);
+        $user = ($credits->sub);
 
 
         $request->validate([
             'orderCode' => 'required|string|max:8',
+            'userId' => $user,
             'productId' => 'required|integer',
             'quantity' => 'required|integer',
             'address' => 'required|string',
@@ -60,7 +65,7 @@ class OrderController extends Controller
             } else {
                 $order = Order::create([
                     'orderCode' => $request->orderCode,
-                    'userId' => $user,
+                    'userId' => (int)$user,
                     'productId' => $productId,
                     'quantity' => $quantity,
                     'address' => $request->address,
@@ -83,9 +88,9 @@ class OrderController extends Controller
 
         $credits = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', $token)[1]))));
 
-        $user = $credits->sub;
+        $user = (array)($credits->sub);
 
-        $order = Order::where(['userId', '=', $user], ['orderCode', '=', $orderCode])->get();
+        $order = Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode)->get();
 
         return response()->json([
             'status' => 'success',
@@ -99,9 +104,7 @@ class OrderController extends Controller
 
         $credits = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', $token)[1]))));
 
-        $user = $credits->sub;
-
-        $order = Order::where(['userId', '=', $user], ['orderCode', '=', $orderCode])->get();
+        $user = (array)$credits->sub;
 
         $request->validate([
             'productId' => 'required|integer',
@@ -110,35 +113,66 @@ class OrderController extends Controller
             'shippingDate' => 'required|date'
         ]);
 
-        $productId = $request->productId;
-        $quantity = $request->quantity;
+        $where =  Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode);
 
-        $myProduct = Product::find($productId);
+        $getOrder = $where->get();
 
-        if (!$myProduct) {
+        foreach ($getOrder as $myOrder) {
+            $initial_shippingDate = ($myOrder->shippingDate);
+        }
+
+        $initDate = date_create($initial_shippingDate);
+        $today =  date_create();
+
+
+        if ($today > $initDate) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Product not found!'
-            ], 404);
+                'message' => 'Shipping date expired'
+            ], 400);
         } else {
-            if ($myProduct->amount < $request->quantity) {
+            if (!$getOrder) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Invalid quantity (more than amount or negative)!'
-                ], 400);
+                    'message' => 'Order not found!'
+                ], 404);
             } else {
-                $order = Order::create([
-                    'productId' => $productId,
-                    'quantity' => $quantity,
-                    'address' => $request->address,
-                    'shippingDate' => $request->shippingDate
-                ]);
+                $myProduct = Product::find($request->productId);
+                if (!$myProduct) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Product not found!'
+                    ], 404);
+                } else {
+                    if ($myProduct->amount < $request->quantity) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Invalid quantity (more than amount or negative)!'
+                        ], 400);
+                    } else {
+                        $update = $where->update([
+                            'productId' => $request->productId,
+                            'quantity' => $request->quantity,
+                            'address' => $request->address,
+                            'shippingDate' => $request->shippingDate
+                        ]);
+                        if ($update) {
+                            $order = Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode)->get();
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'order updated successfully',
-                    'order' => $order
-                ]);
+                            return response()->json([
+                                'status' => 'success',
+                                'message' => 'order updated successfully',
+                                'order' => $order,
+
+                            ]);
+                        } else {
+                            return response()->json([
+                                'status' => 'error',
+                                'message' => $update
+                            ]);
+                        }
+                    }
+                }
             }
         }
     }
