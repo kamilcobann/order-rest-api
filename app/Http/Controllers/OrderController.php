@@ -88,7 +88,7 @@ class OrderController extends Controller
 
         $credits = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', $token)[1]))));
 
-        $user = (array)($credits->sub);
+        $user = ($credits->sub);
 
         $order = Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode)->get();
 
@@ -104,7 +104,7 @@ class OrderController extends Controller
 
         $credits = json_decode(base64_decode(str_replace('_', '/', str_replace('-', '+', explode('.', $token)[1]))));
 
-        $user = (array)$credits->sub;
+        $user = $credits->sub;
 
         $request->validate([
             'productId' => 'required|integer',
