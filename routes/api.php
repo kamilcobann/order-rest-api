@@ -40,4 +40,5 @@ Route::controller(OrderController::class)->group(function () {
     Route::post('order', 'createOrder');
     Route::get('order/{orderCode}', 'getOrderByOrderCode');
     Route::patch('order/{orderCode}', 'updateOrder');
+    Route::get('decrease', 'decreaseAmount');
 });

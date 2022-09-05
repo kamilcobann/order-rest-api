@@ -176,4 +176,35 @@ class OrderController extends Controller
             }
         }
     }
+
+    public function decreaseAmount()
+    {
+        $today =  date_create();
+        $today = date_format($today, 'Y-m-d');
+        $whereOrder = Order::where('shippingDate', '<=', $today)->where('isProcessed', '=', 0);
+        $getOrder = $whereOrder->get();
+
+        foreach ($getOrder as $myOrder) {
+            $buyedAmount = $myOrder->quantity;
+            $buyedProductId = (int)($myOrder->productId);
+        }
+        $getProduct = Product::find($buyedProductId);
+
+
+        $num = $getProduct->amount - $buyedAmount;
+
+        $getProduct->update([
+            'amount' => $num
+        ]);
+
+        $whereOrder->update([
+            'isProcessed' => 1
+        ]);
+        $allProducts = Product::all();
+        return response()->json([
+            "status" => "success",
+            "message" => "product amounts decreased",
+            "products" => $allProducts
+        ]);
+    }
 }

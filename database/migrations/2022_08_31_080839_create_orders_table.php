@@ -23,6 +23,7 @@ return new class extends Migration
             $table->integer('quantity');
             $table->string('address');
             $table->date('shippingDate');
+            $table->boolean('isProcessed')->default(0);
             $table->timestamps();
         });
     }
