@@ -5,19 +5,23 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Product;
-
+use App\Interfaces\IOrder;
+use App\Interfaces\IProduct;
 
 class OrderController extends Controller
 {
-    public function __construct()
+    protected $orderRepo;
+    protected $prodRepo;
+    public function __construct(IOrder $orderRepo, IProduct $prodRepo)
     {
         $this->middleware('auth:api');
+        $this->orderRepo = $orderRepo;
+        $this->prodRepo = $prodRepo;
     }
 
     public function getAllOrders()
     {
-
-        $orders = Order::all();
+        $orders = $this->orderRepo->listAll();
         return response()->json([
             'status' => 'success',
             'orders' => $orders,
@@ -60,14 +64,15 @@ class OrderController extends Controller
                     'message' => 'Invalid quantity (more than amount or negative)!'
                 ], 400);
             } else {
-                $order = Order::create([
-                    'orderCode' => $request->orderCode,
-                    'userId' => (int)$user,
-                    'productId' => $productId,
-                    'quantity' => $quantity,
-                    'address' => $request->address,
-                    'shippingDate' => $request->shippingDate
-                ]);
+
+                $order = $this->orderRepo->insertOrder(
+                    $request->orderCode,
+                    $user,
+                    $productId,
+                    $quantity,
+                    $request->address,
+                    $request->shippingDate
+                );
 
                 return response()->json([
                     'status' => 'success',
@@ -87,7 +92,7 @@ class OrderController extends Controller
 
         $user = ($credits->sub);
 
-        $order = Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode)->get();
+        $order = $this->orderRepo->findOrder($user, $orderCode)->get();
 
         return response()->json([
             'status' => 'success',
@@ -110,7 +115,7 @@ class OrderController extends Controller
             'shippingDate' => 'required|date'
         ]);
 
-        $where =  Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode);
+        $where =  $this->orderRepo->findOrder($user, $orderCode);
 
         $getOrder = $where->get();
 
@@ -134,7 +139,7 @@ class OrderController extends Controller
                     'message' => 'Order not found!'
                 ], 404);
             } else {
-                $myProduct = Product::find($request->productId);
+                $myProduct = $this->prodRepo->findProduct($request->productId);
                 if (!$myProduct) {
                     return response()->json([
                         'status' => 'error',
@@ -147,14 +152,16 @@ class OrderController extends Controller
                             'message' => 'Invalid quantity (more than amount or negative)!'
                         ], 400);
                     } else {
-                        $update = $where->update([
-                            'productId' => $request->productId,
-                            'quantity' => $request->quantity,
-                            'address' => $request->address,
-                            'shippingDate' => $request->shippingDate
-                        ]);
+                        $update = $this->orderRepo->updateOrder(
+                            $user,
+                            $orderCode,
+                            $request->productId,
+                            $request->quantity,
+                            $request->address,
+                            $request->shippingDate
+                        );
                         if ($update) {
-                            $order = Order::where('userId', '=', (int)$user)->where('orderCode', '=', $orderCode)->get();
+                            $order = $this->orderRepo->findOrder($user, $orderCode)->get();
 
                             return response()->json([
                                 'status' => 'success',

@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use App\Interfaces\IProduct;
-use App\Service\ProductService;
+use App\Interfaces\IOrder;
+use App\Service\OrderService;
 use Illuminate\Support\ServiceProvider;
 
-class ProductServiceProvider extends ServiceProvider
+class OrderServiceProvider extends ServiceProvider
 {
     /**
      * Register services.
@@ -16,7 +16,7 @@ class ProductServiceProvider extends ServiceProvider
     public function register()
     {
         //
-        $this->app->bind(IProduct::class, ProductService::class);
+        $this->app->bind(IOrder::class, OrderService::class);
     }
 
     /**

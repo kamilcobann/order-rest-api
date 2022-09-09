@@ -2,19 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Interfaces\IProduct;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function __construct()
+
+    protected $prodRepo;
+
+    public function __construct(IProduct $prodRepo)
     {
         $this->middleware('auth:api');
+        $this->prodRepo = $prodRepo;
     }
 
     public function getAllProducts()
     {
-        $products = Product::all();
+        $products = $this->prodRepo->listAll();
         return response()->json([
             'status' => 'success',
             'products' => $products
@@ -28,12 +32,7 @@ class ProductController extends Controller
             'amount' => 'required|integer'
         ]);
 
-        $product = Product::create(
-            [
-                'name' => $request->name,
-                'amount' => $request->amount
-            ]
-        );
+        $product = $this->prodRepo->insertProduct($request->name, $request->amount);
 
         return response()->json([
             'status' => 'success',
@@ -44,7 +43,7 @@ class ProductController extends Controller
 
     public function getProductByID($id)
     {
-        $product = Product::find($id);
+        $product = $this->prodRepo->findProduct($id);
         return response()->json([
             'status' => 'success',
             'product' => $product
@@ -57,22 +56,17 @@ class ProductController extends Controller
             'name' => 'string|max:255',
             'amount' => 'integer'
         ]);
-        $product = Product::find($id);
+        $this->prodRepo->updateProd($request->name, $request->amount, $id);
 
-        $product->name = $request->name;
-        $product->amount = $request->amount;
-
-        $product->save();
         return response()->json([
             'status' => 'success',
             'message' => 'product updated',
-            'product' => $product
         ]);
     }
 
     public function deleteProduct($id)
     {
-        $product = Product::find($id);
+        $product = $this->prodRepo->findProduct($id);
         $product->delete();
         return response()->json([
             'status' => 'success',
